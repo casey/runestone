@@ -29,7 +29,17 @@ enum Subcommand {
   )]
   Decipher,
   #[command(about = "Start the explorer.")]
-  Server,
+  Server(Server),
+}
+
+#[derive(Parser)]
+struct Server {
+  #[arg(
+    long,
+    help = "Listen on <HTTP_PORT> for incoming HTTP requests.",
+    default_value = "80"
+  )]
+  http_port: u16,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -43,8 +53,11 @@ fn main() -> Result<(), Box<dyn Error>> {
       serde_json::to_writer_pretty(&io::stdout(), &message)?;
       println!();
     }
-    Subcommand::Server => Runtime::new()?.block_on(async {
-      let addr = ("0.0.0.0", 80).to_socket_addrs()?.next().unwrap();
+    Subcommand::Server(server) => Runtime::new()?.block_on(async {
+      let addr = ("0.0.0.0", server.http_port)
+        .to_socket_addrs()?
+        .next()
+        .unwrap();
 
       axum_server::Server::bind(addr)
         .serve(Router::new().route("/", get(home)).into_make_service())

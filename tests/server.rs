@@ -14,15 +14,21 @@ impl Drop for KillOnDrop {
 
 #[test]
 fn server_returns_homepage() {
+  let port = TcpListener::bind("127.0.0.1:0")
+    .unwrap()
+    .local_addr()
+    .unwrap()
+    .port();
+
   let _server = KillOnDrop(
     Command::new(executable_path("runestone"))
-      .arg("server")
+      .args(["server", "--http-port", &port.to_string()])
       .spawn()
       .unwrap(),
   );
 
   for i in 0..100 {
-    if reqwest::get("http://localhost").is_ok() {
+    if reqwest::get(format!("http://localhost:{port}")).is_ok() {
       break;
     }
 
@@ -34,7 +40,10 @@ fn server_returns_homepage() {
   }
 
   assert_eq!(
-    reqwest::get("http://localhost").unwrap().text().unwrap(),
+    reqwest::get(format!("http://localhost:{port}"))
+      .unwrap()
+      .text()
+      .unwrap(),
     "Hello, world!"
   );
 }
