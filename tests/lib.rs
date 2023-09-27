@@ -5,7 +5,7 @@ use {
   std::{
     io::Write,
     net::TcpListener,
-    process::{Command, Stdio},
+    process::{self, Command, Stdio},
     str, thread,
     time::Duration,
   },

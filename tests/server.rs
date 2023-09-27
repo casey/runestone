@@ -1,14 +1,10 @@
 use super::*;
 
-struct KillOnDrop(std::process::Child);
+struct KillOnDrop(process::Child);
 
 impl Drop for KillOnDrop {
   fn drop(&mut self) {
-    assert!(Command::new("kill")
-      .arg(self.0.id().to_string())
-      .status()
-      .unwrap()
-      .success());
+    self.0.kill().unwrap()
   }
 }
 
