@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn Error>> {
       let message = Runestone::decipher(&transaction)?;
 
       serde_json::to_writer_pretty(&io::stdout(), &message)?;
+      println!();
     }
   }
 
