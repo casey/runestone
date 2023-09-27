@@ -49,7 +49,7 @@ impl std::error::Error for Error {}
 
 impl Runestone {
   pub fn decipher(transaction: &Transaction) -> Result<Option<Self>, Error> {
-    let Some(payload) = Runestone::payload(&transaction)? else {
+    let Some(payload) = Runestone::payload(transaction)? else {
       return Ok(None);
     };
 
@@ -143,7 +143,7 @@ mod tests {
       Runestone::decipher(&Transaction {
         input: Vec::new(),
         output: vec![TxOut {
-          script_pubkey: script::Builder::new().push_slice(&[]).into_script(),
+          script_pubkey: script::Builder::new().push_slice([]).into_script(),
           value: 0
         }],
         lock_time: locktime::absolute::LockTime::ZERO,
@@ -315,7 +315,7 @@ mod tests {
           script_pubkey: script::Builder::new()
             .push_opcode(opcodes::all::OP_RETURN)
             .push_slice(b"RUNE_TEST")
-            .push_slice(&payload)
+            .push_slice(payload)
             .into_script(),
           value: 0
         }],
@@ -354,7 +354,7 @@ mod tests {
           script_pubkey: script::Builder::new()
             .push_opcode(opcodes::all::OP_RETURN)
             .push_slice(b"RUNE_TEST")
-            .push_slice(&payload)
+            .push_slice(payload)
             .into_script(),
           value: 0
         }],
@@ -382,11 +382,11 @@ mod tests {
           script_pubkey: script::Builder::new()
             .push_opcode(opcodes::all::OP_RETURN)
             .push_slice(b"RUNE_TEST")
-            .push_slice(&1u128.to_le_bytes())
-            .push_slice(&2u128.to_le_bytes())
-            .push_slice(&3u128.to_le_bytes())
-            .push_slice(&4u128.to_le_bytes())
-            .push_slice(&5u128.to_le_bytes())
+            .push_slice(1u128.to_le_bytes())
+            .push_slice(2u128.to_le_bytes())
+            .push_slice(3u128.to_le_bytes())
+            .push_slice(4u128.to_le_bytes())
+            .push_slice(5u128.to_le_bytes())
             .into_script(),
           value: 0
         }],
