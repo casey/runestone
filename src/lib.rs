@@ -22,6 +22,8 @@ struct Directive {
   output: u128,
 }
 
+mod varint;
+
 #[derive(Debug, PartialEq)]
 pub enum Error {
   Script(script::Error),
