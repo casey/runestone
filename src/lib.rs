@@ -1,5 +1,5 @@
 use {
-  self::{directive::Directive, runestone::Runestone},
+  self::directive::Directive,
   bitcoin::{
     opcodes,
     script::{self, Instruction},
@@ -9,15 +9,19 @@ use {
   std::fmt::{self, Display, Formatter},
 };
 
+pub use runestone::Runestone;
+
 mod directive;
 mod runestone;
 mod varint;
+
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
   Script(script::Error),
   Opcode(opcodes::All),
-  Payload,
+  Varint,
 }
 
 impl From<script::Error> for Error {
@@ -31,7 +35,7 @@ impl Display for Error {
     match self {
       Self::Script(err) => write!(f, "failed to parse script: {err}"),
       Self::Opcode(op) => write!(f, "non-push opcode {op} in payload"),
-      Self::Payload => write!(f, "payload length was not a multiple of 16"),
+      Self::Varint => write!(f, "varint over maximum value"),
     }
   }
 }
@@ -39,19 +43,19 @@ impl Display for Error {
 impl std::error::Error for Error {}
 
 impl Runestone {
-  pub fn decipher(transaction: &Transaction) -> Result<Option<Self>, Error> {
+  pub fn decipher(transaction: &Transaction) -> Result<Option<Self>> {
     let Some(payload) = Runestone::payload(transaction)? else {
       return Ok(None);
     };
 
-    if payload.len() % 16 != 0 {
-      return Err(Error::Payload);
-    }
+    let mut integers = Vec::new();
+    let mut i = 0;
 
-    let integers = payload
-      .chunks_exact(16)
-      .map(|chunk| u128::from_le_bytes(chunk.try_into().unwrap()))
-      .collect::<Vec<u128>>();
+    while i < payload.len() {
+      let (integer, length) = varint::decode(&payload[i..])?;
+      integers.push(integer);
+      i += length;
+    }
 
     let mut directives = Vec::new();
     let mut decimals = None;
@@ -80,7 +84,7 @@ impl Runestone {
     }))
   }
 
-  fn payload(transaction: &Transaction) -> Result<Option<Vec<u8>>, Error> {
+  fn payload(transaction: &Transaction) -> Result<Option<Vec<u8>>> {
     for output in &transaction.output {
       let mut instructions = output.script_pubkey.instructions();
 
@@ -250,14 +254,19 @@ mod tests {
     );
   }
 
+  fn payload(integers: &[u128]) -> Vec<u8> {
+    let mut payload = Vec::new();
+
+    for integer in integers {
+      payload.extend(varint::encode(*integer));
+    }
+
+    payload
+  }
+
   #[test]
   fn deciphering_non_empty_runestone_is_successful() {
-    let payload = 1u128
-      .to_le_bytes()
-      .into_iter()
-      .chain(2u128.to_le_bytes())
-      .chain(3u128.to_le_bytes())
-      .collect::<Vec<u8>>();
+    let payload = payload(&[1, 2, 3]);
 
     let payload: &PushBytes = payload.as_slice().try_into().unwrap();
 
@@ -289,13 +298,7 @@ mod tests {
 
   #[test]
   fn additional_integer_is_decimals() {
-    let payload = 1u128
-      .to_le_bytes()
-      .into_iter()
-      .chain(2u128.to_le_bytes())
-      .chain(3u128.to_le_bytes())
-      .chain(4u128.to_le_bytes())
-      .collect::<Vec<u8>>();
+    let payload = payload(&[1, 2, 3, 4]);
 
     let payload: &PushBytes = payload.as_slice().try_into().unwrap();
 
@@ -327,14 +330,7 @@ mod tests {
 
   #[test]
   fn additional_two_integers_are_decimals_and_symbol() {
-    let payload = 1u128
-      .to_le_bytes()
-      .into_iter()
-      .chain(2u128.to_le_bytes())
-      .chain(3u128.to_le_bytes())
-      .chain(4u128.to_le_bytes())
-      .chain(5u128.to_le_bytes())
-      .collect::<Vec<u8>>();
+    let payload = payload(&[1, 2, 3, 4, 5]);
 
     let payload: &PushBytes = payload.as_slice().try_into().unwrap();
 
@@ -365,6 +361,45 @@ mod tests {
   }
 
   #[test]
+  fn runestone_may_contain_multipe_directives() {
+    let payload = payload(&[1, 2, 3, 4, 5, 6]);
+
+    let payload: &PushBytes = payload.as_slice().try_into().unwrap();
+
+    assert_eq!(
+      Runestone::decipher(&Transaction {
+        input: Vec::new(),
+        output: vec![TxOut {
+          script_pubkey: script::Builder::new()
+            .push_opcode(opcodes::all::OP_RETURN)
+            .push_slice(b"RUNE_TEST")
+            .push_slice(payload)
+            .into_script(),
+          value: 0
+        }],
+        lock_time: locktime::absolute::LockTime::ZERO,
+        version: 0,
+      }),
+      Ok(Some(Runestone {
+        directives: vec![
+          Directive {
+            id: 1,
+            amount: 2,
+            output: 3,
+          },
+          Directive {
+            id: 4,
+            amount: 5,
+            output: 6,
+          },
+        ],
+        decimals: None,
+        symbol: None,
+      }))
+    );
+  }
+
+  #[test]
   fn payload_pushes_are_concatinated() {
     assert_eq!(
       Runestone::decipher(&Transaction {
@@ -373,11 +408,11 @@ mod tests {
           script_pubkey: script::Builder::new()
             .push_opcode(opcodes::all::OP_RETURN)
             .push_slice(b"RUNE_TEST")
-            .push_slice(1u128.to_le_bytes())
-            .push_slice(2u128.to_le_bytes())
-            .push_slice(3u128.to_le_bytes())
-            .push_slice(4u128.to_le_bytes())
-            .push_slice(5u128.to_le_bytes())
+            .push_slice::<&PushBytes>(varint::encode(1).as_slice().try_into().unwrap())
+            .push_slice::<&PushBytes>(varint::encode(2).as_slice().try_into().unwrap())
+            .push_slice::<&PushBytes>(varint::encode(3).as_slice().try_into().unwrap())
+            .push_slice::<&PushBytes>(varint::encode(4).as_slice().try_into().unwrap())
+            .push_slice::<&PushBytes>(varint::encode(5).as_slice().try_into().unwrap())
             .into_script(),
           value: 0
         }],
