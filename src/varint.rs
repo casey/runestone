@@ -22,7 +22,9 @@ fn encode(mut n: u128) -> Vec<u8> {
   out
 }
 
-fn decode(buffer: &[u8]) -> u128 {
+// - decode returns error if over length
+
+fn decode(buffer: &[u8]) -> (u128, usize) {
   let mut n = 0;
   let mut i = 0;
 
@@ -30,7 +32,7 @@ fn decode(buffer: &[u8]) -> u128 {
     let b = buffer.get(i).cloned().unwrap() as u128;
 
     if b < 128 {
-      return n + b;
+      return (n + b, i + 1);
     }
 
     n += b - 127;
@@ -49,8 +51,9 @@ mod tests {
     for i in 0..128 {
       let n = 1 << i;
       let encoded = encode(n);
-      let decoded = decode(&encoded);
+      let (decoded, length) = decode(&encoded);
       assert_eq!(decoded, n);
+      assert_eq!(length, encoded.len());
     }
   }
 
@@ -61,8 +64,9 @@ mod tests {
     for i in 0..129 {
       n = n << 1 | i % 2;
       let encoded = encode(n);
-      let decoded = decode(&encoded);
+      let (decoded, length) = decode(&encoded);
       assert_eq!(decoded, n);
+      assert_eq!(length, encoded.len());
     }
   }
 

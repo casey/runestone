@@ -1,4 +1,5 @@
 use {
+  self::{directive::Directive, runestone::Runestone},
   bitcoin::{
     opcodes,
     script::{self, Instruction},
@@ -8,20 +9,8 @@ use {
   std::fmt::{self, Display, Formatter},
 };
 
-#[derive(Default, Serialize, Debug, PartialEq)]
-pub struct Runestone {
-  directives: Vec<Directive>,
-  decimals: Option<u128>,
-  symbol: Option<u128>,
-}
-
-#[derive(Default, Serialize, Debug, PartialEq)]
-struct Directive {
-  id: u128,
-  amount: u128,
-  output: u128,
-}
-
+mod directive;
+mod runestone;
 mod varint;
 
 #[derive(Debug, PartialEq)]
