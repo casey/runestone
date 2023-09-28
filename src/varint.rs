@@ -1,5 +1,30 @@
 use super::*;
 
+#[cfg(test)]
+pub fn encode(mut n: u128) -> Vec<u8> {
+  let mut out = Vec::new();
+
+  loop {
+    let mut byte = n as u8 % 128;
+
+    if !out.is_empty() {
+      byte |= 0b1000_0000;
+    }
+
+    out.push(byte);
+
+    if n < 128 {
+      break;
+    }
+
+    n = n / 128 - 1;
+  }
+
+  out.reverse();
+
+  out
+}
+
 pub fn decode(buffer: &[u8]) -> Result<(u128, usize)> {
   let mut n = 0;
   let mut i = 0;
@@ -23,30 +48,6 @@ pub fn decode(buffer: &[u8]) -> Result<(u128, usize)> {
 mod tests {
   use super::*;
 
-  pub fn encode(mut n: u128) -> Vec<u8> {
-    let mut out = Vec::new();
-
-    loop {
-      let mut byte = n as u8 % 128;
-
-      if !out.is_empty() {
-        byte |= 0b1000_0000;
-      }
-
-      out.push(byte);
-
-      if n < 128 {
-        break;
-      }
-
-      n = n / 128 - 1;
-    }
-
-    out.reverse();
-
-    out
-  }
-
   #[test]
   fn powers_of_two_round_trip_successfully() {
     for i in 0..128 {
@@ -63,7 +64,7 @@ mod tests {
     let mut n = 0;
 
     for i in 0..129 {
-      n = n << 1 | i % 2;
+      n = n << 1 | (i % 2);
       let encoded = encode(n);
       let (decoded, length) = decode(&encoded).unwrap();
       assert_eq!(decoded, n);
