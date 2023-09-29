@@ -82,4 +82,34 @@ mod tests {
       Err(Error::Varint)
     );
   }
+
+  #[test]
+  fn decoding_bip_samples() {
+    assert_eq!(decode(&[0x00]), Ok((0, 1)));
+    assert_eq!(decode(&[0x01]), Ok((1, 1)));
+    assert_eq!(decode(&[0x7F]), Ok((127, 1)));
+    assert_eq!(decode(&[0x80, 0x00]), Ok((128, 2)));
+    assert_eq!(decode(&[0x80, 0x7F]), Ok((255, 2)));
+    assert_eq!(decode(&[0x81, 0x00]), Ok((256, 2)));
+    assert_eq!(decode(&[0xFE, 0x7F]), Ok((16383, 2)));
+    assert_eq!(decode(&[0xFF, 0x00]), Ok((16384, 2)));
+    assert_eq!(decode(&[0xFF, 0x7F]), Ok((16511, 2)));
+    assert_eq!(decode(&[0x82, 0xFE, 0x7F]), Ok((65535, 3)));
+    assert_eq!(decode(&[0x8E, 0xFE, 0xFE, 0xFF, 0x00, ]), Ok((1 << 32, 5)));
+  }
+
+  #[test]
+  fn encoding_bip_samples() {
+    assert_eq!(encode(0), &[0x00]);
+    assert_eq!(encode(1), &[0x01]);
+    assert_eq!(encode(127), &[0x7F]);
+    assert_eq!(encode(128), &[0x80, 0x00]);
+    assert_eq!(encode(255), &[0x80, 0x7F]);
+    assert_eq!(encode(256), &[0x81, 0x00]);
+    assert_eq!(encode(16383), &[0xFE, 0x7F]);
+    assert_eq!(encode(16384), &[0xFF, 0x00]);
+    assert_eq!(encode(16511), &[0xFF, 0x7F]);
+    assert_eq!(encode(65535), &[0x82, 0xFE, 0x7F]);
+    assert_eq!(encode(1 << 32), &[0x8E, 0xFE, 0xFE, 0xFF, 0x00, ]);
+  }
 }
