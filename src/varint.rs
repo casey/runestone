@@ -82,4 +82,29 @@ mod tests {
       Err(Error::Varint)
     );
   }
+
+  #[test]
+  fn taproot_annex_format_bip_test_vectors_round_trip_successfully() {
+    const TEST_VECTORS: &[(u128, &[u8])] = &[
+      (0, &[0x00]),
+      (1, &[0x01]),
+      (127, &[0x7F]),
+      (128, &[0x80, 0x00]),
+      (255, &[0x80, 0x7F]),
+      (256, &[0x81, 0x00]),
+      (16383, &[0xFE, 0x7F]),
+      (16384, &[0xFF, 0x00]),
+      (16511, &[0xFF, 0x7F]),
+      (65535, &[0x82, 0xFE, 0x7F]),
+      (1 << 32, &[0x8E, 0xFE, 0xFE, 0xFF, 0x00]),
+    ];
+
+    for (n, encoding) in TEST_VECTORS {
+      let actual = encode(*n);
+      assert_eq!(actual, *encoding);
+      let (actual, length) = decode(encoding).unwrap();
+      assert_eq!(actual, *n);
+      assert_eq!(length, encoding.len());
+    }
+  }
 }
