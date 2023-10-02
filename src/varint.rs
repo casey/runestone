@@ -2,7 +2,8 @@ use super::*;
 
 #[cfg(test)]
 pub fn encode(mut n: u128) -> Vec<u8> {
-  let mut out = Vec::new();
+  // Pre allocate worst case 128/7 = ~18.3
+  let mut out = Vec::with_capacity(19);
 
   loop {
     let mut byte = n as u8 % 128;
@@ -38,7 +39,7 @@ pub fn decode(buffer: &[u8]) -> Result<(u128, usize)> {
 
     n += b - 127;
 
-    n = n.checked_mul(128).ok_or(Error::Varint)?;
+    n = n.checked_shl(7).ok_or(Error::Varint)?;
 
     i += 1;
   }
