@@ -39,7 +39,11 @@ pub fn decode(buffer: &[u8]) -> Result<(u128, usize)> {
 
     n += b - 127;
 
-    n = n.checked_shl(7).ok_or(Error::Varint)?;
+    // check presence of any top 7 MSB that would indicate an overflow on the next shift
+    if n & (u128::MAX << 121) != 0 {
+      return Err(Error::Varint);
+    }
+    n <<= 7;
 
     i += 1;
   }
