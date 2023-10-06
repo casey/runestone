@@ -4,7 +4,7 @@ runestone
 Warning
 -------
 
-`runestone` implements runes, a fungible token protocol for Bitcoin.
+This repo is for discussion of runes, a fungible token protocol for Bitcoin.
 
 Fungible tokens are, without exaggeration and nearly without exception, a vile
 abyss of hopium, scams, and incompetence.
